@@ -371,9 +371,14 @@ canvas{display:block;border:1px solid var(--border);border-radius:12px;backgroun
           <div class="canvas-wrap"><div class="canvas-label">Carrier Signal (1kHz)</div><canvas id="carrierCanvas" height="90"></canvas></div>
           <div class="canvas-wrap"><div class="canvas-label" id="s2-canvas-label">Modulated Output</div><canvas id="modCanvas" height="90"></canvas></div>
         </div>
-        <div>
-          <div class="info-box" id="s2-info"></div>
-          <div class="data-row"><div class="data-label">Input Bits</div><div class="data-bits" id="s2-bits" style="font-size:11px"></div></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="controls-row" style="margin-top:0;background:var(--bg);padding:14px;border-radius:10px;border:1px solid var(--border);gap:10px">
+            <label style="flex-basis:100%">Amplitude <input type="range" id="modAmp" min="0.1" max="0.45" step="0.05" value="0.35" style="flex:1"> <span id="modAmpVal" style="width:36px;text-align:right;font-family:var(--mono)">0.35</span></label>
+            <label style="flex-basis:100%">Frequency <input type="range" id="modFreq" min="1" max="10" step="0.5" value="4" style="flex:1"> <span id="modFreqVal" style="width:36px;text-align:right;font-family:var(--mono)">4 Hz</span></label>
+            <label style="flex-basis:100%">Phase <input type="range" id="modPhase" min="0" max="360" step="45" value="0" style="flex:1"> <span id="modPhaseVal" style="width:36px;text-align:right;font-family:var(--mono)">0°</span></label>
+          </div>
+          <div class="info-box" id="s2-info" style="margin-bottom:0"></div>
+          <div class="data-row" style="margin-bottom:0"><div class="data-label">Input Bits</div><div class="data-bits" id="s2-bits" style="font-size:11px"></div></div>
         </div>
       </div>
       <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(1)">◀ Back</button><button class="btn btn-primary" onclick="goStage(3)">Next: Multiplexing ▶</button></div>

@@ -352,29 +352,44 @@ const modInfo={
     label:'BPSK Modulated Output'
   }
 };
+['modAmp','modFreq','modPhase'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    const val=this.value;
+    document.getElementById(id+'Val').textContent=id==='modPhase'?val+'°':(id==='modFreq'?val+' Hz':val);
+    renderModulation();
+  });
+});
+
 function renderModulation(){
-  const{bits}=simData;const b16=bits.slice(0,16);
+  const{bits}=simData;if(!bits)return;
+  const b16=bits.slice(0,16);
   document.getElementById('s2-bits').innerHTML=formatBits(b16)+(bits.length>16?'…':'');
   const m=modInfo[modMode];
   document.getElementById('s2-title').textContent=m.title;
   document.getElementById('s2-desc').textContent=m.desc;
   document.getElementById('s2-info').innerHTML=m.info;
   document.getElementById('s2-canvas-label').textContent=m.label;
-  drawCarrier('carrierCanvas');
-  drawModulated('modCanvas',b16,modMode);
+
+  const amp=parseFloat(document.getElementById('modAmp').value);
+  const freq=parseFloat(document.getElementById('modFreq').value);
+  const phase=parseFloat(document.getElementById('modPhase').value)*Math.PI/180;
+
+  drawCarrier('carrierCanvas',amp,freq,phase,b16.length);
+  drawModulated('modCanvas',b16,modMode,amp,freq,phase);
 }
-function drawCarrier(id){
+function drawCarrier(id,amp,freq,phase,numBits){
   const c=document.getElementById(id),ctx=c.getContext('2d');
   const W=c.offsetWidth||700;c.width=W;const H=c.height;
   ctx.fillStyle='#f6f4f0';ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#9333ea';ctx.lineWidth=1.5;ctx.beginPath();
-  for(let x=0;x<W;x++){
-    const y=H/2-(H*0.35)*Math.sin(2*Math.PI*20*x/W);
+  for(let x=0;x<=W;x++){
+    const time=(x/W)*numBits;
+    const y=H/2-(H*amp)*Math.sin(2*Math.PI*freq*time+phase);
     x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   }
   ctx.stroke();
 }
-function drawModulated(id,bits,mode){
+function drawModulated(id,bits,mode,amp,freq,phase){
   const c=document.getElementById(id),ctx=c.getContext('2d');
   const W=c.offsetWidth||700;c.width=W;const H=c.height;
   ctx.fillStyle='#f6f4f0';ctx.fillRect(0,0,W,H);
@@ -389,37 +404,34 @@ function drawModulated(id,bits,mode){
     if(mode==='ask'){
       ctx.strokeStyle=b==='1'?color:fade;
       for(let s=0;s<=50;s++){
-        const t=s/50,x=i*bw+t*bw,amp=b==='1'?0.38:0.05;
-        const y=H/2-H*amp*Math.sin(2*Math.PI*5*t);
+        const t=s/50,x=i*bw+t*bw,time=i+t;
+        const a=b==='1'?amp:0.05;
+        const y=H/2-H*a*Math.sin(2*Math.PI*freq*time+phase);
         s===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
     }else if(mode==='fsk'){
       ctx.strokeStyle=b==='1'?color:fade;
-      const freq=b==='1'?8:3; // high vs low frequency
+      const f=b==='1'?freq*1.6:freq*0.4;
       for(let s=0;s<=60;s++){
         const t=s/60,x=i*bw+t*bw;
-        const y=H/2-H*0.35*Math.sin(2*Math.PI*freq*t);
+        const y=H/2-H*amp*Math.sin(2*Math.PI*f*t+phase);
         s===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
     }else if(mode==='psk'||mode==='bpsk'){
       ctx.strokeStyle=b==='1'?color:fade;
-      const phaseShift=b==='1'?0:Math.PI; // 0° vs 180°
+      const pShift=b==='1'?0:Math.PI;
       for(let s=0;s<=60;s++){
-        const t=s/60,x=i*bw+t*bw;
-        const y=H/2-H*0.35*Math.sin(2*Math.PI*5*t+phaseShift);
+        const t=s/60,x=i*bw+t*bw,time=i+t;
+        const y=H/2-H*amp*Math.sin(2*Math.PI*freq*time+phase+pShift);
         s===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
     }
     ctx.stroke();
   });
-  // Bit labels
   ctx.fillStyle='#6b6860';ctx.font='10px JetBrains Mono,monospace';ctx.textAlign='center';
   bits.split('').forEach((b,i)=>ctx.fillText(b,i*bw+bw/2,H-4));
-  // Bit boundary lines
   ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
-  bits.split('').forEach((_,i)=>{
-    if(i>0){ctx.beginPath();ctx.moveTo(i*bw,0);ctx.lineTo(i*bw,H);ctx.stroke()}
-  });
+  bits.split('').forEach((_,i)=>{if(i>0){ctx.beginPath();ctx.moveTo(i*bw,0);ctx.lineTo(i*bw,H);ctx.stroke()}});
 }
 
 // ── STAGE 3: TDM ──
