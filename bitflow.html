@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BitFlow — Multi-Layer Communication Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f4f0;--bg2:#edeae4;--card:rgba(255,255,255,0.85);
+  --glass:rgba(0,0,0,0.02);--border:rgba(0,0,0,0.09);
+  --text:#1a1916;--text2:#6b6860;
+  --accent:#e85d26;--accent-glow:rgba(232,93,38,0.2);
+  --blue:#2563eb;--blue-glow:rgba(37,99,235,0.2);
+  --green:#16a34a;--green-glow:rgba(22,163,74,0.2);
+  --purple:#9333ea;--purple-glow:rgba(147,51,234,0.2);
+  --red:#dc2626;--teal:#0d9488;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+  --radius:16px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::selection{background:rgba(232,93,38,0.15);color:var(--accent)}
+
+/* PARTICLES BG */
+#particleBg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* HEADER */
+header{
+  background:rgba(255,255,255,0.88);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:16px 32px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 1px 8px rgba(0,0,0,0.05);
+}
+.logo{font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:-1px}
+.logo span{background:linear-gradient(135deg,var(--accent),#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-sub{font-size:11px;color:var(--text2);font-family:var(--mono);letter-spacing:2px;text-transform:uppercase}
+.header-right{text-align:right}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:livePulse 1.5s infinite;vertical-align:middle}
+@keyframes livePulse{0%,100%{box-shadow:0 0 0 0 var(--green-glow)}50%{box-shadow:0 0 0 8px transparent}}
+
+.container{max-width:1200px;margin:0 auto;padding:28px 20px 100px;position:relative;z-index:1}
+
+/* INPUT CARD */
+.input-card{
+  background:var(--card);backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px 28px;margin-bottom:24px;
+  box-shadow:0 2px 16px rgba(0,0,0,0.06);
+}
+.input-card h2{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.input-row{display:flex;gap:10px;align-items:stretch}
+.input-row input[type="text"]{
+  flex:1;font-family:var(--mono);font-size:15px;padding:12px 16px;
+  border:1px solid var(--border);border-radius:12px;
+  background:var(--bg);color:var(--text);outline:none;
+  transition:all .3s;
+}
+.input-row input[type="text"]:focus{border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.btn{
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  padding:12px 20px;border:none;border-radius:12px;cursor:pointer;
+  transition:all .2s;letter-spacing:.5px;position:relative;overflow:hidden;
+}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,0.1),transparent);opacity:0;transition:opacity .2s}
+.btn:hover::after{opacity:1}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#f59e0b);color:#fff;box-shadow:0 4px 16px var(--accent-glow)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 24px var(--accent-glow)}
+.btn-secondary{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.controls-row{display:flex;gap:14px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.controls-row label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;font-family:var(--mono)}
+.controls-row input[type=range]{width:120px;accent-color:var(--accent)}
+.controls-row select{font-family:var(--mono);font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none}
+
+/* PIPELINE */
+.pipeline-label{font-family:var(--mono);font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.pipeline{display:flex;gap:6px;margin-bottom:28px;overflow-x:auto;padding-bottom:4px}
+.pipe-block{
+  flex:1;min-width:100px;
+  background:var(--card);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:12px;
+  padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:pointer;transition:all .3s;position:relative;
+}
+.pipe-block:hover{background:var(--bg2);transform:translateY(-2px)}
+.pipe-block.active{
+  background:linear-gradient(135deg,rgba(232,93,38,0.1),rgba(245,158,11,0.06));
+  border-color:var(--accent);box-shadow:0 4px 20px var(--accent-glow);
+}
+.pipe-block.done{border-color:var(--green)}
+.pipe-block.done::after{content:'✓';position:absolute;top:6px;right:8px;font-size:10px;color:var(--green)}
+.pipe-icon{font-size:20px}
+.pipe-name{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.5px;text-align:center;color:var(--text2)}
+.pipe-block.active .pipe-name{color:var(--accent)}
+.pipe-connector{display:flex;align-items:center;color:var(--text2);font-size:10px;opacity:0.4}
+
+/* STAGE SECTIONS */
+.stage-section{display:none;animation:slideIn .4s ease}
+.stage-section.visible{display:block}
+@keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.stage-card{
+  background:var(--card);backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:28px;margin-bottom:20px;
+  box-shadow:0 2px 20px rgba(0,0,0,0.06);
+}
+.stage-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.stage-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:5px 12px;border-radius:8px;letter-spacing:1px}
+.badge-orange{background:#fff0eb;color:var(--accent);border:1px solid #ffd0bb}
+.badge-blue{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe}
+.badge-green{background:#f0fdf4;color:var(--green);border:1px solid #bbf7d0}
+.badge-purple{background:#faf5ff;color:var(--purple);border:1px solid #e9d5ff}
+.badge-red{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.badge-teal{background:#f0fdfa;color:var(--teal);border:1px solid #99f6e4}
+.stage-title{font-family:var(--mono);font-size:18px;font-weight:700}
+.stage-desc{
+  font-size:13px;color:var(--text2);line-height:1.8;
+  background:var(--bg);border-left:3px solid var(--border);
+  padding:12px 16px;border-radius:0 10px 10px 0;margin-bottom:20px;
+}
+
+/* DATA DISPLAY */
+.data-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.data-label{font-family:var(--mono);font-size:10px;color:var(--text2);min-width:80px;padding-top:4px;text-transform:uppercase;letter-spacing:1px}
+.data-bits{
+  font-family:var(--mono);font-size:13px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;line-height:1.8;word-break:break-all;flex:1;
+}
+.bit-0{color:#aaa}
+.bit-1{color:var(--accent);font-weight:700}
+.bit-corrupt{background:#fef2f2;color:var(--red);border-radius:3px;font-weight:700}
+
+/* CANVAS */
+canvas{display:block;border:1px solid var(--border);border-radius:12px;background:var(--bg);width:100%}
+.canvas-label{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.canvas-wrap{margin-bottom:16px}
+
+/* TABS */
+.tab-row{display:flex;gap:8px;margin-bottom:16px}
+.tab{
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  padding:8px 16px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg);
+  cursor:pointer;transition:all .2s;color:var(--text2);
+}
+.tab:hover{background:var(--bg2)}
+.tab.active{background:linear-gradient(135deg,var(--accent),#f59e0b);color:#fff;border-color:transparent;box-shadow:0 4px 12px var(--accent-glow)}
+
+/* TDM */
+.tdm-grid{display:grid;gap:3px;margin-bottom:16px}
+.tdm-cell{
+  height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  transition:all .3s;
+}
+.tdm-label{background:transparent;color:var(--text2)}
+.tdm-u1{background:#fff0eb;color:var(--accent);border:1px solid #ffd0bb}
+.tdm-u2{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe}
+.tdm-u3{background:#f0fdf4;color:var(--green);border:1px solid #bbf7d0}
+.tdm-merged{background:var(--bg2);color:var(--text);border:1px solid var(--border);font-size:9px}
+
+/* PACKET FLOW */
+.packet-area{
+  position:relative;height:180px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;margin-bottom:12px;
+}
+.sender-label,.recv-label{position:absolute;top:10px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:1px}
+.sender-label{left:14px}.recv-label{right:14px}
+.node-box{
+  position:absolute;width:56px;bottom:14px;border-radius:10px;
+  padding:10px 4px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:700;
+}
+.sender-node{left:14px;background:#fff0eb;color:var(--accent);border:1px solid #ffd0bb}
+.recv-node{right:14px;background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe}
+.packet-track{position:absolute;bottom:36px;left:82px;right:82px;height:2px;background:var(--border)}
+.packet-dot{
+  position:absolute;top:-12px;width:48px;height:24px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:9px;font-weight:700;
+  transition:left .05s linear;
+}
+.pkt-ok{background:#f0fdf4;color:var(--green);border:1px solid #bbf7d0;box-shadow:0 2px 8px var(--green-glow)}
+.pkt-lost{background:#fef2f2;color:var(--red);border:1px solid #fecaca;box-shadow:0 2px 8px rgba(220,38,38,0.15)}
+.pkt-retx{background:#faf5ff;color:var(--purple);border:1px solid #e9d5ff;box-shadow:0 2px 8px var(--purple-glow)}
+
+/* HANDSHAKE */
+.handshake-steps{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.hs-step{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:12px;padding:14px 16px;flex:1;min-width:130px;
+  font-family:var(--mono);font-size:12px;text-align:center;
+  opacity:0.3;transition:all .4s;
+}
+.hs-step.active{opacity:1;border-color:var(--green);background:#f0fdf4;box-shadow:0 4px 16px var(--green-glow)}
+.hs-step .hs-icon{font-size:22px;margin-bottom:4px}
+.hs-step .hs-label{color:var(--green);font-weight:700}
+.hs-step .hs-desc{font-size:10px;color:var(--text2);margin-top:4px}
+
+/* COMPARE */
+.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.compare-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:18px}
+.compare-box h4{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.compare-text{font-family:var(--mono);font-size:22px;font-weight:700;word-break:break-all}
+.match-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  padding:8px 16px;border-radius:10px;margin-top:14px;
+}
+.match-ok{background:#f0fdf4;color:var(--green);border:1px solid #bbf7d0}
+.match-err{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+
+/* NAV */
+.nav-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* STATUS BAR */
+.status-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  color:var(--text);padding:10px 24px;display:flex;align-items:center;gap:16px;
+  font-family:var(--mono);font-size:11px;z-index:99;
+  box-shadow:0 -1px 8px rgba(0,0,0,0.04);
+}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:livePulse 1.5s infinite}
+
+/* MISC */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.info-box{
+  background:#fffbf0;border:1px solid #fde68a;
+  border-radius:10px;padding:12px 16px;font-size:12px;color:#92400e;margin-bottom:14px;
+}
+.channel-bits{font-family:var(--mono);font-size:13px;line-height:2;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+
+/* LIVE SIGNAL BANNER */
+.live-banner{
+  background:linear-gradient(135deg,#fff0eb,#faf5ff);
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px;
+  overflow:hidden;position:relative;box-shadow:0 2px 12px rgba(0,0,0,0.04);
+}
+.live-banner canvas{border:none;background:transparent;border-radius:0;height:50px;flex:1}
+.live-banner-text{font-family:var(--mono);font-size:11px;color:var(--text2);min-width:120px}
+.live-banner-text .val{color:var(--accent);font-size:16px;font-weight:700;display:block;margin-top:2px}
+
+/* STATS CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{
+  background:var(--card);backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:12px;
+  padding:16px;text-align:center;transition:all .3s;
+}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+.stat-card .stat-val{font-family:var(--mono);font-size:22px;font-weight:700;margin-bottom:4px}
+.stat-card .stat-label{font-family:var(--mono);font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+
+@media(max-width:700px){
+  header{padding:12px 14px}
+  .container{padding:14px 10px 100px}
+  .grid-2,.compare-row{grid-template-columns:1fr}
+  .input-row{flex-direction:column}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .pipeline{gap:4px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="particleBg"></canvas>
+
+<header>
+  <div>
+    <div class="logo">Bit<span>Flow</span></div>
+    <div class="header-sub">Multi-Layer Communication Simulator</div>
+  </div>
+  <div class="header-right">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text2)">
+      <span class="live-dot"></span>SYSTEM ACTIVE
+    </div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--mono);margin-top:2px">Physical → Data → Transport</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LIVE SIGNAL -->
+  <div class="live-banner">
+    <div class="live-banner-text">LIVE SIGNAL<span class="val" id="liveFreq">1.0 kHz</span></div>
+    <canvas id="liveSigCanvas" height="50"></canvas>
+    <div class="live-banner-text" style="text-align:right">THROUGHPUT<span class="val" id="liveThroughput">0 bps</span></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:var(--accent)" id="statBits">0</div><div class="stat-label">Bits Processed</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--blue)" id="statPackets">0</div><div class="stat-label">Packets Sent</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--red)" id="statErrors">0</div><div class="stat-label">Bit Errors</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--green)" id="statBER">0%</div><div class="stat-label">BER</div></div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-card">
+    <h2>⚡ Simulation Setup</h2>
+    <div class="input-row">
+      <input type="text" id="userInput" value="Hello" maxlength="6" placeholder="Enter text (max 6 chars)…"/>
+      <button class="btn btn-primary" onclick="startSim()">▶ RUN SIMULATION</button>
+      <button class="btn btn-secondary" onclick="resetSim()">↺ RESET</button>
+    </div>
+    <div class="controls-row">
+      <label>Noise: <input type="range" id="noiseSlider" min="0" max="40" value="15"> <span id="noiseVal">15%</span></label>
+      <label>Delay: <input type="checkbox" id="delayToggle"> Enable</label>
+      <label>Line Coding:
+        <select id="lineCodeSel"><option value="nrzl">NRZ-L</option><option value="nrzi">NRZ-I</option><option value="manchester">Manchester</option><option value="diffmanchester">Diff. Manchester</option><option value="ami">AMI</option><option value="mlt3">MLT-3</option></select>
+      </label>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline-label">DATA FLOW PIPELINE — click any stage</div>
+  <div class="pipeline">
+    <div class="pipe-block" id="pb0" onclick="goStage(0)"><div class="pipe-icon">📝</div><div class="pipe-name">INPUT</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb1" onclick="goStage(1)"><div class="pipe-icon">〰️</div><div class="pipe-name">LINE CODE</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb2" onclick="goStage(2)"><div class="pipe-icon">📡</div><div class="pipe-name">MODULATE</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb3" onclick="goStage(3)"><div class="pipe-icon">🔀</div><div class="pipe-name">MULTIPLEX</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb4" onclick="goStage(4)"><div class="pipe-icon">🌐</div><div class="pipe-name">CHANNEL</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb5" onclick="goStage(5)"><div class="pipe-icon">🔄</div><div class="pipe-name">TRANSPORT</div></div>
+    <div class="pipe-connector">→</div>
+    <div class="pipe-block" id="pb6" onclick="goStage(6)"><div class="pipe-icon">🎯</div><div class="pipe-name">RECEIVER</div></div>
+  </div>
+
+  <!-- STAGES -->
+  <div class="stage-section" id="s0">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-orange">STAGE 1</span><div class="stage-title">📝 Input & Binary Encoding</div></div>
+      <div class="stage-desc">Every character is converted to its ASCII code, then expressed as an 8-bit binary number. Digital communication begins with binary.</div>
+      <div class="data-row"><div class="data-label">Text</div><div class="data-bits" id="s0-text" style="color:var(--accent);font-size:22px;font-weight:700"></div></div>
+      <div id="s0-chars"></div>
+      <div class="data-row" style="margin-top:8px"><div class="data-label">Full Bitstream</div><div class="data-bits" id="s0-bits"></div></div>
+      <div class="nav-row"><button class="btn btn-primary" onclick="goStage(1)">Next: Line Coding ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s1">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-blue">STAGE 2</span><div class="stage-title">〰️ Line Coding — Physical Layer</div></div>
+      <div class="stage-desc">Line coding maps bits onto voltage signals for transmission over physical media. Different schemes trade off complexity, synchronization, and DC balance.</div>
+      <div class="tab-row" style="flex-wrap:wrap"><div class="tab active" onclick="setLC('nrzl',this)">NRZ-L</div><div class="tab" onclick="setLC('nrzi',this)">NRZ-I</div><div class="tab" onclick="setLC('manchester',this)">Manchester</div><div class="tab" onclick="setLC('diffmanchester',this)">Diff. Manchester</div><div class="tab" onclick="setLC('ami',this)">AMI</div><div class="tab" onclick="setLC('mlt3',this)">MLT-3</div></div>
+      <div id="s1-scheme-label" style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:10px"></div>
+      <div class="canvas-wrap"><div class="canvas-label">Signal Waveform</div><canvas id="lcCanvas" height="120"></canvas></div>
+      <div class="data-row"><div class="data-label">Bits</div><div class="data-bits" id="s1-bits"></div></div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(0)">◀ Back</button><button class="btn btn-primary" onclick="goStage(2)">Next: Modulation ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s2">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-purple">STAGE 3</span><div class="stage-title" id="s2-title">📡 Modulation</div></div>
+      <div class="stage-desc" id="s2-desc">Digital modulation encodes binary data onto an analog carrier signal for transmission. Different schemes vary the amplitude, frequency, or phase of the carrier.</div>
+      <div class="tab-row" style="flex-wrap:wrap"><div class="tab active" onclick="setMod('ask',this)">ASK</div><div class="tab" onclick="setMod('fsk',this)">FSK</div><div class="tab" onclick="setMod('psk',this)">PSK</div><div class="tab" onclick="setMod('bpsk',this)">BPSK</div></div>
+      <div class="grid-2">
+        <div>
+          <div class="canvas-wrap"><div class="canvas-label">Carrier Signal (1kHz)</div><canvas id="carrierCanvas" height="90"></canvas></div>
+          <div class="canvas-wrap"><div class="canvas-label" id="s2-canvas-label">Modulated Output</div><canvas id="modCanvas" height="90"></canvas></div>
+        </div>
+        <div>
+          <div class="info-box" id="s2-info"></div>
+          <div class="data-row"><div class="data-label">Input Bits</div><div class="data-bits" id="s2-bits" style="font-size:11px"></div></div>
+        </div>
+      </div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(1)">◀ Back</button><button class="btn btn-primary" onclick="goStage(3)">Next: Multiplexing ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s3">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-teal">STAGE 4</span><div class="stage-title">🔀 Time Division Multiplexing (TDM)</div></div>
+      <div class="stage-desc">TDM shares a single channel among multiple users by assigning time slots in a repeating frame. 3 users share the channel — User 1 gets your data.</div>
+      <div id="tdm-grid-wrap"></div>
+      <div class="data-row" style="margin-top:8px"><div class="data-label">Merged Stream</div><div class="data-bits" id="s3-merged" style="font-size:11px"></div></div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(2)">◀ Back</button><button class="btn btn-primary" onclick="goStage(4)">Next: Channel ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s4">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-red">STAGE 5</span><div class="stage-title">🌐 Transmission Channel — Noise & Delay</div></div>
+      <div class="stage-desc">Real channels introduce noise (random bit flips) and delay. Corrupted bits are highlighted in red.</div>
+      <div class="canvas-wrap"><div class="canvas-label">Transmission Timeline</div><canvas id="channelCanvas" height="90"></canvas></div>
+      <div class="data-row"><div class="data-label">Transmitted</div><div class="data-bits" id="s4-tx"></div></div>
+      <div class="data-row"><div class="data-label">Received</div><div class="channel-bits" id="s4-rx"></div></div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--red);margin-top:8px" id="s4-stats"></div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(3)">◀ Back</button><button class="btn btn-primary" onclick="goStage(5)">Next: Transport ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s5">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-blue">STAGE 6</span><div class="stage-title">🔄 Transport Layer — TCP-Inspired</div></div>
+      <div class="stage-desc">TCP establishes reliability. It uses a 3-way handshake, splits data into numbered packets, and retransmits lost packets using ACK signals.</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:10px;letter-spacing:1px">3-WAY HANDSHAKE</div>
+      <div class="handshake-steps" id="hsSteps">
+        <div class="hs-step" id="hs0"><div class="hs-icon">→</div><div class="hs-label">SYN</div><div class="hs-desc">Client initiates</div></div>
+        <div class="hs-step" id="hs1"><div class="hs-icon">←</div><div class="hs-label">SYN-ACK</div><div class="hs-desc">Server acknowledges</div></div>
+        <div class="hs-step" id="hs2"><div class="hs-icon">→</div><div class="hs-label">ACK</div><div class="hs-desc">Connection ready</div></div>
+        <div class="hs-step" id="hs3"><div class="hs-icon">📦</div><div class="hs-label">DATA</div><div class="hs-desc">Packets flow</div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:8px;letter-spacing:1px">PACKET FLOW</div>
+      <div class="packet-area" id="packetArea">
+        <div class="sender-label">SENDER</div><div class="recv-label">RECEIVER</div>
+        <div class="node-box sender-node">SND</div><div class="node-box recv-node">RCV</div>
+        <div class="packet-track" id="pktTrack"></div>
+      </div>
+      <div id="pktTable" style="font-family:var(--mono);font-size:12px"></div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(4)">◀ Back</button><button class="btn btn-primary" onclick="goStage(6)">Next: Receiver ▶</button></div>
+    </div>
+  </div>
+
+  <div class="stage-section" id="s6">
+    <div class="stage-card">
+      <div class="stage-header"><span class="stage-badge badge-green">STAGE 7</span><div class="stage-title">🎯 Receiver — Decode & Reconstruct</div></div>
+      <div class="stage-desc">The receiver reverses the pipeline: demultiplex → demodulate → decode line coding → binary to ASCII. The original message is reconstructed.</div>
+      <div class="data-row"><div class="data-label">Received Bits</div><div class="data-bits" id="s6-bits" style="font-size:11px"></div></div>
+      <div id="s6-steps" style="margin-bottom:16px"></div>
+      <div class="compare-row" id="compareRow"></div>
+      <div class="nav-row"><button class="btn btn-secondary" onclick="goStage(5)">◀ Back</button><button class="btn btn-primary" onclick="resetSim()">↺ Start Over</button></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="status-bar">
+  <div class="status-dot"></div>
+  <div id="statusText">Ready — enter text and click Run Simulation</div>
+  <div style="margin-left:auto;color:var(--text2)" id="statusStep"></div>
+</div>
+
+<script src="bitflow.js"></script>
+</body>
+</html>
